@@ -65,11 +65,20 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
-        Vector2 moveVector = moveInput.ReadValue<Vector2>();
-        Vector2 lookVector = lookInput.ReadValue<Vector2>();
+        // While a conversation is open the keyboard drives the dialogue and the mouse drives its
+        // buttons, so steering has to stop reading both.
+        bool talking = DialogueOpen();
+
+        Vector2 moveVector = talking ? Vector2.zero : moveInput.ReadValue<Vector2>();
+        Vector2 lookVector = talking ? Vector2.zero : lookInput.ReadValue<Vector2>();
 
         HandleMovement(moveVector);
         HandleLook(lookVector);
+    }
+
+    private static bool DialogueOpen()
+    {
+        return DialogueManager.Instance != null && DialogueManager.Instance.IsTalking;
     }
 
     private void HandleMovement(Vector2 moveVector)
@@ -128,7 +137,8 @@ public class PlayerController : MonoBehaviour
 
         moveDirection = (forward * newSpeed.x) + (right * newSpeed.y);
 
-        if (jumpInput.WasPressedThisFrame() && characterController.isGrounded)
+        // Space is the dialogue advance key as well as Jump, so jumping has to wait for the panel to close.
+        if (!DialogueOpen() && jumpInput.WasPressedThisFrame() && characterController.isGrounded)
         {
             moveDirection.y = JumpForce;
         }
@@ -159,7 +169,8 @@ public class PlayerController : MonoBehaviour
 
         float verticalInput = 0.0f;
 
-        if (jumpInput.IsPressed())
+        // Jump doubles as "swim up", so it is muted while the dialogue panel owns Space.
+        if (!DialogueOpen() && jumpInput.IsPressed())
         {
             verticalInput += 1.0f;
         }
@@ -206,7 +217,7 @@ public class PlayerController : MonoBehaviour
 
     private bool DiveHeld()
     {
-        if (Keyboard.current == null)
+        if (DialogueOpen() || Keyboard.current == null)
         {
             return false;
         }
